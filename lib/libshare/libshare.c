@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <strings.h>
 #include <libintl.h>
@@ -165,6 +166,53 @@ parse_sharetab(sa_handle_impl_t impl_handle)
 	fclose(fp);
 }
 
+static int sharetab_fd = -1;
+
+static int
+sharetab_lock(void)
+{
+	struct flock lock;
+
+	assert(sharetab_fd == -1);
+
+	sharetab_fd = open(ZFS_SHARETAB, (O_RDWR | O_CREAT), 0600);
+
+	if (sharetab_fd < 0) {
+		perror("sharetab: failed to open");
+		return (-1);
+	}
+
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = 0;
+	lock.l_len = 0;
+	if (fcntl(sharetab_fd, F_SETLKW, &lock) < 0) {
+		perror("sharetab: failed to lock");
+		return (-1);
+	}
+	return (0);
+}
+
+static int
+sharetab_unlock(void)
+{
+	struct flock lock;
+	int retval = -1;
+
+	if (sharetab_fd < 0)
+		return (-1);
+	lock.l_type = F_UNLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = 0;
+	lock.l_len = 0;
+	if (fcntl(sharetab_fd, F_SETLK, &lock) == 0)
+		retval = 0;
+	close(sharetab_fd);
+	sharetab_fd = -1;
+	return (retval);
+}
+
+
 static void
 update_sharetab(sa_handle_impl_t impl_handle)
 {
@@ -175,19 +223,27 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	sa_fstype_t *fstype;
 	const char *resource;
 
+
 	if (mkdir("/etc/dfs", 0755) < 0 && errno != EEXIST) {
 		return;
 	}
 
+	if (sharetab_lock() < 0)
+		return;
+
 	temp_fd = mkstemp(tempfile);
 
-	if (temp_fd < 0)
+	if (temp_fd < 0) {
+		(void) sharetab_unlock();
 		return;
+	}
 
 	temp_fp = fdopen(temp_fd, "w");
 
-	if (temp_fp == NULL)
+	if (temp_fp == NULL) {
+		(void) sharetab_unlock();
 		return;
+	}
 
 	impl_share = impl_handle->shares;
 	while (impl_share != NULL) {
@@ -217,6 +273,7 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	fclose(temp_fp);
 
 	(void) rename(tempfile, ZFS_SHARETAB);
+	(void) sharetab_unlock();
 }
 
 typedef struct update_cookie_s {
