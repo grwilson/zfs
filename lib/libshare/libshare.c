@@ -168,17 +168,22 @@ parse_sharetab(sa_handle_impl_t impl_handle)
 
 static int sharetab_fd = -1;
 
-static int
+int
 sharetab_lock(void)
 {
 	struct flock lock;
 
 	assert(sharetab_fd == -1);
 
-	sharetab_fd = open(ZFS_SHARETAB, (O_RDWR | O_CREAT), 0600);
+	if (mkdir("/etc/dfs", 0755) < 0 && errno != EEXIST) {
+		perror("sharetab_lock: failed to create /etc/dfs");
+		return (-1);
+	}
+
+	sharetab_fd = open(ZFS_SHARETAB_LOCK, (O_RDWR | O_CREAT), 0600);
 
 	if (sharetab_fd < 0) {
-		perror("sharetab: failed to open");
+		perror("sharetab_lock: failed to open");
 		return (-1);
 	}
 
@@ -187,13 +192,13 @@ sharetab_lock(void)
 	lock.l_start = 0;
 	lock.l_len = 0;
 	if (fcntl(sharetab_fd, F_SETLKW, &lock) < 0) {
-		perror("sharetab: failed to lock");
+		perror("sharetab_lock: failed to lock");
 		return (-1);
 	}
 	return (0);
 }
 
-static int
+int
 sharetab_unlock(void)
 {
 	struct flock lock;
@@ -224,26 +229,15 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	const char *resource;
 
 
-	if (mkdir("/etc/dfs", 0755) < 0 && errno != EEXIST) {
-		return;
-	}
-
-	if (sharetab_lock() < 0)
-		return;
-
 	temp_fd = mkstemp(tempfile);
 
-	if (temp_fd < 0) {
-		(void) sharetab_unlock();
+	if (temp_fd < 0)
 		return;
-	}
 
 	temp_fp = fdopen(temp_fd, "w");
 
-	if (temp_fp == NULL) {
-		(void) sharetab_unlock();
+	if (temp_fp == NULL)
 		return;
-	}
 
 	impl_share = impl_handle->shares;
 	while (impl_share != NULL) {
@@ -273,7 +267,6 @@ update_sharetab(sa_handle_impl_t impl_handle)
 	fclose(temp_fp);
 
 	(void) rename(tempfile, ZFS_SHARETAB);
-	(void) sharetab_unlock();
 }
 
 typedef struct update_cookie_s {
