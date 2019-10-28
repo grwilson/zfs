@@ -438,7 +438,32 @@ int zfs_arc_min_prefetch_ms = 0;
 int zfs_arc_min_prescient_prefetch_ms = 0;
 int zfs_arc_p_dampener_disable = 1;
 int zfs_arc_meta_prune = 10000;
-int zfs_arc_meta_strategy = ARC_STRATEGY_META_BALANCED;
+
+/*
+ * When the arc is overflowing (i.e. size is greater than arc_c)
+ * newly added blocks must first try to evict an existing block before
+ * being added to the arc. This is a critical code path and we need to
+ * ensure that we maintain a lightweight eviction policy to avoid running
+ * the system out of memory. The zfs_arc_meta_strategy provides two
+ * different eviction policies for metadata -- ARC_STRATEGY_META_ONLY and
+ * ARC_STRATEGY_META_BALANCED. The ARC_STRATEGY_META_ONLY strategy is a
+ * best-effort attempt to reduce the arc's metadata below the arc_meta_limit.
+ * ARC_STRATEGY_META_BALANCED is more aggressive and will make several
+ * attempts to bring the arc_meta_used value below the arc_meta_limit. It
+ * also provides a callback to the ZPL layer to "prune" the inode and
+ * dentry caches so that more metadata might be evicted. Unfortunately,
+ * reducing those VFS caches may not actually help since the block
+ * may still be referenced by the dbuf cache. This also becomes
+ * very inefficient when thousands of filesystems exist since the
+ * pruning of the caches results in a callback to each filesystem and
+ * will consume 100% of all CPUs. Doing this in the critical code path of
+ * block allocation will lead to memory exhaustion. Although the concepts
+ * behind ARC_STRATEGY_META_BALANCED have merit, it should be reworked
+ * to address its shortcomings before setting that strategy for meta
+ * data eviction. For now, we default to the ARC_STRATEGY_META_ONLY
+ * strategy.
+ */
+int zfs_arc_meta_strategy = ARC_STRATEGY_META_ONLY;
 int zfs_arc_meta_adjust_restarts = 4096;
 int zfs_arc_lotsfree_percent = 10;
 
