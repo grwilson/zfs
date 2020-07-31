@@ -744,6 +744,7 @@ typedef struct arc_stats {
 	kstat_named_t arcstat_l2_hdr_size;
 	kstat_named_t arcstat_memory_throttle_count;
 	kstat_named_t arcstat_memory_direct_count;
+	kstat_named_t arcstat_memory_indirect_count;
 	kstat_named_t arcstat_memory_all_bytes;
 	kstat_named_t arcstat_memory_free_bytes;
 	kstat_named_t arcstat_memory_available_bytes;
@@ -846,6 +847,7 @@ static arc_stats_t arc_stats = {
 	{ "l2_hdr_size",		KSTAT_DATA_UINT64 },
 	{ "memory_throttle_count",	KSTAT_DATA_UINT64 },
 	{ "memory_direct_count",	KSTAT_DATA_UINT64 },
+	{ "memory_indirect_count",	KSTAT_DATA_UINT64 },
 	{ "memory_all_bytes",		KSTAT_DATA_UINT64 },
 	{ "memory_free_bytes",		KSTAT_DATA_UINT64 },
 	{ "memory_available_bytes",	KSTAT_DATA_INT64 },
@@ -5279,21 +5281,6 @@ static unsigned long
 arc_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
 {
 	/*
-	 * kswapd doesn't know how much we evict, because it's only looking
-	 * for pages to be added to the inactive lists.  This causes it to
-	 * ask us to evict the entire ARC.  Instead, we ignore its requests
-	 * and manage the free memory in arc_reap_cb[_check]().
-	 */
-	if (current_is_kswapd()) {
-		/*
-		 * Wake up the arc_evict_zthr so it can start responding to
-		 * this memory pressure right away, if it isn't already.
-		 */
-		arc_wait_for_eviction(0);
-		return (0);
-	}
-
-	/*
 	 * __GFP_FS won't be set if we are called from ZFS code.  To avoid a
 	 * deadlock, we don't allow evicting in this case.  We return 0
 	 * rather than SHRINK_STOP so that the shrinker logic doesn't
@@ -5356,7 +5343,17 @@ arc_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
 	 */
 	arc_no_grow = B_TRUE;
 
-	ARCSTAT_BUMP(arcstat_memory_direct_count);
+	/*
+	 * When direct reclaim is observed it usually indicates a rapid
+	 * increase in memory pressure.  This occurs because the kswapd
+	 * threads were unable to asynchronously keep enough free memory
+	 * available.
+	 */
+	if (current_is_kswapd()) {
+		ARCSTAT_BUMP(arcstat_memory_indirect_count);
+	} else {
+		ARCSTAT_BUMP(arcstat_memory_direct_count);
+	}
 
 	return (sc->nr_to_scan);
 }
