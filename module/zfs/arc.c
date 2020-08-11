@@ -4187,7 +4187,7 @@ arc_evict_state_impl(multilist_t *ml, int idx, arc_buf_hdr_t *marker,
 	 * we need to acquire the global arc_evict_lock.
 	 *
 	 * Only wake when there's sufficient free memory in the system
-	 * (specifically, arc_sys_free/2, which is 1/64th of RAM by default).
+	 * (specifically, arc_sys_free/2, which is 1/16th of RAM by default).
 	 */
 	mutex_enter(&arc_evict_lock);
 	arc_evict_count += bytes_evicted;
@@ -7840,13 +7840,10 @@ arc_init(void)
 	 * maximum boost is 150% of the high watermark.  So the maximum
 	 * boosted high watermark is 160MB + 0.5% of RAM.
 	 *
-	 * The default arc_sys_free is 512MB + 1/32nd (3%) of RAM, which is
-	 * more than double the highest high_wmark (160MB + 0.5% of RAM).
-	 * Note that the extra 512MB is only strictly necessary on systems
-	 * with less than 16GB of RAM, but we always add it as an extra
-	 * cushion.
+	 * The default arc_sys_free is 1/8th (12.5%) of RAM, which is
+	 * more than the highest high_wmark (160MB + 0.5% of RAM).
 	 */
-	arc_sys_free = 512 * 1024 * 1024 + allmem / 32;
+	arc_sys_free = allmem / 8;
 #endif
 
 	/* Set min cache to 1/32 of all memory, or 32MB, whichever is more */
