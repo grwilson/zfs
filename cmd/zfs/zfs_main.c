@@ -797,6 +797,7 @@ zfs_do_clone(int argc, char **argv)
 {
 	zfs_handle_t *zhp = NULL;
 	boolean_t parents = B_FALSE;
+	boolean_t mount = B_TRUE;
 	nvlist_t *props;
 	int ret = 0;
 	int c;
@@ -805,8 +806,11 @@ zfs_do_clone(int argc, char **argv)
 		nomem();
 
 	/* check options */
-	while ((c = getopt(argc, argv, "o:p")) != -1) {
+	while ((c = getopt(argc, argv, "o:pN")) != -1) {
 		switch (c) {
+		case 'N':
+			mount = B_FALSE;
+			break;
 		case 'o':
 			if (!parseprop(props, optarg)) {
 				nvlist_free(props);
@@ -861,7 +865,7 @@ zfs_do_clone(int argc, char **argv)
 			nvlist_free(props);
 			return (0);
 		}
-		if (zfs_create_ancestors(g_zfs, argv[1]) != 0) {
+		if (zfs_create_ancestors(g_zfs, argv[1], mount) != 0) {
 			zfs_close(zhp);
 			nvlist_free(props);
 			return (1);
@@ -878,7 +882,10 @@ zfs_do_clone(int argc, char **argv)
 			log_history = B_FALSE;
 		}
 
-		ret = zfs_mount_and_share(g_zfs, argv[1], ZFS_TYPE_DATASET);
+		if (mount) {
+			ret = zfs_mount_and_share(g_zfs, argv[1],
+			    ZFS_TYPE_DATASET);
+		}
 	}
 
 	zfs_close(zhp);
@@ -930,6 +937,7 @@ zfs_do_create(int argc, char **argv)
 	boolean_t dryrun = B_FALSE;
 	boolean_t verbose = B_FALSE;
 	boolean_t parseable = B_FALSE;
+	boolean_t mount = B_TRUE;
 	int ret = 1;
 	nvlist_t *props;
 	uint64_t intval;
@@ -938,8 +946,11 @@ zfs_do_create(int argc, char **argv)
 		nomem();
 
 	/* check options */
-	while ((c = getopt(argc, argv, ":PV:b:nso:pv")) != -1) {
+	while ((c = getopt(argc, argv, ":NPV:b:nso:pv")) != -1) {
 		switch (c) {
+		case 'N':
+			mount = B_FALSE;
+			break;
 		case 'V':
 			type = ZFS_TYPE_VOLUME;
 			if (zfs_nicestrtonum(g_zfs, optarg, &intval) != 0) {
@@ -987,7 +998,6 @@ zfs_do_create(int argc, char **argv)
 			break;
 		case 'v':
 			verbose = B_TRUE;
-			break;
 		case ':':
 			(void) fprintf(stderr, gettext("missing size "
 			    "argument\n"));
@@ -1111,7 +1121,7 @@ zfs_do_create(int argc, char **argv)
 			    "create ancestors of %s\n", argv[0]);
 		}
 		if (!dryrun) {
-			if (zfs_create_ancestors(g_zfs, argv[0]) != 0) {
+			if (zfs_create_ancestors(g_zfs, argv[0], mount) != 0) {
 				goto error;
 			}
 		}
@@ -1160,7 +1170,8 @@ zfs_do_create(int argc, char **argv)
 		log_history = B_FALSE;
 	}
 
-	ret = zfs_mount_and_share(g_zfs, argv[0], ZFS_TYPE_DATASET);
+	if (mount)
+		ret = zfs_mount_and_share(g_zfs, argv[0], ZFS_TYPE_DATASET);
 error:
 	nvlist_free(props);
 	return (ret);
@@ -3697,7 +3708,7 @@ zfs_do_rename(int argc, char **argv)
 
 	/* If we were asked and the name looks good, try to create ancestors. */
 	if (parents && zfs_name_valid(argv[1], zfs_get_type(zhp)) &&
-	    zfs_create_ancestors(g_zfs, argv[1]) != 0) {
+	    zfs_create_ancestors(g_zfs, argv[1], B_TRUE) != 0) {
 		zfs_close(zhp);
 		return (1);
 	}

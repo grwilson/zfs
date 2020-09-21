@@ -633,7 +633,7 @@ void libzfs_add_handle(get_all_cb_t *, zfs_handle_t *);
  */
 extern int zfs_create(libzfs_handle_t *, const char *, zfs_type_t,
     nvlist_t *);
-extern int zfs_create_ancestors(libzfs_handle_t *, const char *);
+extern int zfs_create_ancestors(libzfs_handle_t *, const char *, boolean_t);
 extern int zfs_destroy(zfs_handle_t *, boolean_t);
 extern int zfs_destroy_snaps(zfs_handle_t *, char *, boolean_t);
 extern int zfs_destroy_snaps_nvl(libzfs_handle_t *, nvlist_t *, boolean_t);

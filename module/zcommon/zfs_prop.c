@@ -381,6 +381,12 @@ zfs_prop_init(void)
 		{ NULL }
 	};
 
+	static zprop_index_t container_table[] = {
+		{ "rw",		ZFS_CONTAINER_RW },
+		{ "ro",		ZFS_CONTAINER_RO },
+		{ NULL }
+	};
+
 	/* inherit index properties */
 	zprop_register_index(ZFS_PROP_REDUNDANT_METADATA, "redundant_metadata",
 	    ZFS_REDUNDANT_METADATA_ALL,
@@ -460,6 +466,10 @@ zfs_prop_init(void)
 	    ZFS_VOLMODE_DEFAULT, PROP_INHERIT,
 	    ZFS_TYPE_FILESYSTEM | ZFS_TYPE_VOLUME,
 	    "default | full | geom | dev | none", "VOLMODE", volmode_table);
+	zprop_register_index(ZFS_PROP_CONTAINER_CTL, "containerctl",
+	    ZFS_CONTAINER_RW, PROP_INHERIT,
+	    ZFS_TYPE_FILESYSTEM | ZFS_TYPE_SNAPSHOT,
+	    "rw | ro", "CONTAINERCTL", container_table);
 
 	/* inherit index (boolean) properties */
 	zprop_register_index(ZFS_PROP_ATIME, "atime", 1, PROP_INHERIT,

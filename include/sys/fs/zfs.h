@@ -186,6 +186,7 @@ typedef enum {
 	ZFS_PROP_IVSET_GUID,		/* not exposed to the user */
 	ZFS_PROP_REDACTED,
 	ZFS_PROP_REDACT_SNAPS,
+	ZFS_PROP_CONTAINER_CTL,
 	ZFS_NUM_PROPS
 } zfs_prop_t;
 
@@ -419,6 +420,11 @@ typedef enum {
 	ZFS_DNSIZE_8K = 8192,
 	ZFS_DNSIZE_16K = 16384
 } zfs_dnsize_type_t;
+
+typedef enum {
+	ZFS_CONTAINER_RO = 0,
+	ZFS_CONTAINER_RW = 1,
+} zfs_container_typer_t;
 
 typedef enum {
 	ZFS_REDUNDANT_METADATA_ALL,

@@ -4562,8 +4562,9 @@ zfs_receive_one(libzfs_handle_t *hdl, int infd, const char *tosnap,
 		 */
 		*cp = '\0';
 
-		if (flags->isprefix && !flags->istail && !flags->dryrun &&
-		    create_parents(hdl, destsnap, strlen(tosnap)) != 0) {
+		if (flags->isprefix && !flags->istail &&
+		    !flags->dryrun && create_parents(hdl, destsnap,
+		    strlen(tosnap), B_TRUE) != 0) {
 			err = zfs_error(hdl, EZFS_BADRESTORE, errbuf);
 			goto out;
 		}

@@ -3495,7 +3495,8 @@ zfs_dataset_exists(libzfs_handle_t *hdl, const char *path, zfs_type_t types)
  * Fail if the initial prefixlen-ancestor does not already exist.
  */
 int
-create_parents(libzfs_handle_t *hdl, char *target, int prefixlen)
+create_parents(libzfs_handle_t *hdl, char *target, int prefixlen,
+    boolean_t mount)
 {
 	zfs_handle_t *h;
 	char *cp;
@@ -3543,14 +3544,16 @@ create_parents(libzfs_handle_t *hdl, char *target, int prefixlen)
 			goto ancestorerr;
 		}
 
-		if (zfs_mount(h, NULL, 0) != 0) {
-			opname = dgettext(TEXT_DOMAIN, "mount");
-			goto ancestorerr;
-		}
+		if (mount) {
+			if (zfs_mount(h, NULL, 0) != 0) {
+				opname = dgettext(TEXT_DOMAIN, "mount");
+				goto ancestorerr;
+			}
 
-		if (zfs_share(h) != 0) {
-			opname = dgettext(TEXT_DOMAIN, "share");
-			goto ancestorerr;
+			if (zfs_share(h) != 0) {
+				opname = dgettext(TEXT_DOMAIN, "share");
+				goto ancestorerr;
+			}
 		}
 
 		zfs_close(h);
@@ -3569,7 +3572,7 @@ ancestorerr:
  * Creates non-existing ancestors of the given path.
  */
 int
-zfs_create_ancestors(libzfs_handle_t *hdl, const char *path)
+zfs_create_ancestors(libzfs_handle_t *hdl, const char *path, boolean_t mount)
 {
 	int prefix;
 	char *path_copy;
@@ -3593,7 +3596,7 @@ zfs_create_ancestors(libzfs_handle_t *hdl, const char *path)
 		return (-1);
 
 	if ((path_copy = strdup(path)) != NULL) {
-		rc = create_parents(hdl, path_copy, prefix);
+		rc = create_parents(hdl, path_copy, prefix, mount);
 		free(path_copy);
 	}
 	if (path_copy == NULL || rc != 0)

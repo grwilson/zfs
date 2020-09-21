@@ -465,6 +465,37 @@ zfs_secpolicy_write_perms(const char *name, const char *perm, cred_t *cr)
 	int error;
 	dsl_dataset_t *ds;
 	dsl_pool_t *dp;
+	uint64_t container_ctl;
+
+	/*
+	 * Determine if we're running in a container by checking the
+	 * pid_namespace.
+	 */
+	if (ns_of_pid(task_pid(curproc)) != NULL &&
+	    ns_of_pid(task_pid(curproc))->parent != NULL) {
+		zfs_dbgmsg("NAME %s in container, perm %s", name, perm);
+
+		if (dsl_prop_get_integer(name,
+		    zfs_prop_to_name(ZFS_PROP_CONTAINER_CTL), &container_ctl,
+		    NULL) != 0)
+			return (SET_ERROR(EPERM));
+
+		/*
+		 * Readonly container access is provided for all permissions
+		 * except create and mount. This allows clones to be created
+		 * within containers under datasets which have a readonly
+		 * container access property set.
+		 */
+		if (container_ctl == ZFS_CONTAINER_RO &&
+		    (strcmp(perm, ZFS_DELEG_PERM_CREATE) != 0 &&
+		    strcmp(perm, ZFS_DELEG_PERM_MOUNT) != 0)) {
+			zfs_dbgmsg("NAME %s FAIL, perm %s, val %d", name,
+			    perm, container_ctl);
+			return (SET_ERROR(EPERM));
+		}
+		zfs_dbgmsg("NAME %s SUCCESS, perm %s, val %d", name, perm,
+		    container_ctl);
+	}
 
 	/*
 	 * First do a quick check for root in the global zone, which
