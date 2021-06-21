@@ -409,6 +409,7 @@ zfs_file_unlink(const char *path)
  *
  * Returns 0 on success EBADF on failure.
  */
+#if 0
 int
 zfs_file_get(int fd, zfs_file_t **fpp)
 {
@@ -421,6 +422,13 @@ zfs_file_get(int fd, zfs_file_t **fpp)
 	*fpp = fp;
 
 	return (0);
+}
+#endif
+
+inline zfs_file_t *
+zfs_file_get_fp(int fd)
+{
+	return (fget(fd));
 }
 
 /*

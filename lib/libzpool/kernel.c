@@ -1360,7 +1360,7 @@ zfs_file_fallocate(zfs_file_t *fp, int mode, loff_t offset, loff_t len)
  *
  * Returns current file offset.
  */
-loff_t
+inline loff_t
 zfs_file_off(zfs_file_t *fp)
 {
 	return (lseek(fp->f_fd, SEEK_CUR, 0));
@@ -1390,6 +1390,7 @@ zfs_file_unlink(const char *path)
  * Returns 0 on success EBADF on failure.
  * Unsupported in user space.
  */
+#if 0
 int
 zfs_file_get(int fd, zfs_file_t **fpp)
 {
@@ -1397,7 +1398,15 @@ zfs_file_get(int fd, zfs_file_t **fpp)
 
 	return (EOPNOTSUPP);
 }
+#endif
 
+zfs_file_t *
+zfs_file_get_fp(int fd)
+{
+	abort();
+
+	return (NULL);
+}
 /*
  * Drop reference to file pointer
  *

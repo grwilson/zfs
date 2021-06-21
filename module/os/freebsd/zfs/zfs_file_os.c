@@ -241,6 +241,7 @@ zfs_file_fsync(zfs_file_t *fp, int flags)
 	return (zfs_vop_fsync(fp->f_vnode));
 }
 
+#if 0
 int
 zfs_file_get(int fd, zfs_file_t **fpp)
 {
@@ -251,6 +252,18 @@ zfs_file_get(int fd, zfs_file_t **fpp)
 
 	*fpp = fp;
 	return (0);
+}
+#endif
+
+inline zfs_file_t *
+zfs_file_get_fp(int fd)
+{
+	struct file *fp;
+
+	if (fget(curthread, fd, &cap_no_rights, &fp))
+		return (NULL);
+
+	return (fp);
 }
 
 void
@@ -265,7 +278,7 @@ zfs_file_put(int fd)
 	}
 }
 
-loff_t
+inline loff_t
 zfs_file_off(zfs_file_t *fp)
 {
 	return (fp->f_offset);

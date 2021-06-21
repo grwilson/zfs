@@ -4833,8 +4833,12 @@ zfs_ioc_recv_impl(char *tofs, char *tosnap, char *origin, nvlist_t *recvprops,
 	*errors = fnvlist_alloc();
 	off = 0;
 
+#if 0
 	if ((error = zfs_file_get(input_fd, &input_fp)))
 		return (error);
+#endif
+	if ((input_fp = zfs_file_get_fp(input_fd)) == NULL)
+		return (SET_ERROR(EBADF));
 
 	noff = off = zfs_file_off(input_fp);
 	error = dmu_recv_begin(tofs, tosnap, begin_record, force,
@@ -5446,8 +5450,12 @@ zfs_ioc_send(zfs_cmd_t *zc)
 		zfs_file_t *fp;
 		dmu_send_outparams_t out = {0};
 
+#if 0
 		if ((error = zfs_file_get(zc->zc_cookie, &fp)))
 			return (error);
+#endif
+		if ((fp = zfs_file_get_fp(zc->zc_cookie)) == NULL)
+			return (SET_ERROR(EBADF));
 
 		off = zfs_file_off(fp);
 		out.dso_outfunc = dump_bytes;
@@ -6059,8 +6067,12 @@ zfs_ioc_diff(zfs_cmd_t *zc)
 	offset_t off;
 	int error;
 
+#if 0
 	if ((error = zfs_file_get(zc->zc_cookie, &fp)))
 		return (error);
+#endif
+	if ((fp = zfs_file_get_fp(zc->zc_cookie)) == NULL)
+		return (SET_ERROR(EBADF));
 
 	off = zfs_file_off(fp);
 	error = dmu_diff(zc->zc_name, zc->zc_value, fp, &off);
@@ -6433,8 +6445,12 @@ zfs_ioc_send_new(const char *snapname, nvlist_t *innvl, nvlist_t *outnvl)
 
 	(void) nvlist_lookup_string(innvl, "redactbook", &redactbook);
 
+#if 0
 	if ((error = zfs_file_get(fd, &fp)))
 		return (error);
+#endif
+	if ((fp = zfs_file_get_fp(fd)) == NULL)
+		return (SET_ERROR(EBADF));
 
 	off = zfs_file_off(fp);
 
@@ -7323,12 +7339,16 @@ zfsdev_getminor(int fd, minor_t *minorp)
 {
 	zfsdev_state_t *zs, *fpd;
 	zfs_file_t *fp;
-	int rc;
 
 	ASSERT(!MUTEX_HELD(&zfsdev_state_lock));
 
+#if 0
+	int rc;
 	if ((rc = zfs_file_get(fd, &fp)))
 		return (rc);
+#endif
+	if ((fp = zfs_file_get_fp(fd)) == NULL)
+		return (SET_ERROR(EBADF));
 
 	fpd = zfs_file_private(fp);
 	if (fpd == NULL)
